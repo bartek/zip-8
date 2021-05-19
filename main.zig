@@ -25,9 +25,9 @@ pub fn main() !void {
     defer c.deinit(allocator);
     c.init(mem);
 
-    // Load the provided ROM into memory
+    // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging
-    var buffer: [0x1000]u8 = undefined;
+    var buffer: [4096]u8 = undefined;
     var file = cwd.openFile("./roms/ibm-logo.ch8", .{}) catch |err| {
         warn("Unable to open file: {s}\n", .{@errorName(err)});
         return err;
@@ -35,6 +35,10 @@ pub fn main() !void {
     defer file.close();
     const end_index = try file.readAll(&buffer);
 
+    // And load the buffer into the emulators memory
+    try mem.loadRom(buffer);
+
+    c.tick();
     // The emulator runs an infinite loop and does three tasks in succession:
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
@@ -48,6 +52,9 @@ pub fn main() !void {
         //
         //  Then immediately increment the PC by 2, to be ready to fetch the
         //  next opcode.
-        c.tick();
+        //c.tick();
     }
 }
+
+// FIXME: We need to load the rom into memory
+fn loadProgram(mem: *memory.Memory) !void {}

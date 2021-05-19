@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const MemoryError = error{ProgramTooLarge};
+
 // Memory is the CHIP-8's Memory
 // The memory should be 4B (4 kilobytes, 4096 bytes) large
 // CHIP-8's index register and program counter can only address 12 bits, which is conveniently, 4096 address
@@ -21,5 +23,18 @@ pub const Memory = struct {
 
     pub fn write(mem: *Memory, address: u12, value: u8) void {
         mem.memory[address] = value;
+    }
+
+    // loadRom loads a buffer into Memory
+    pub fn loadRom(mem: *Memory, buffer: [4096]u8) !void {
+        var i: u12 = 0x200;
+
+        if (buffer.len > 4096) {
+            return MemoryError.ProgramTooLarge;
+        }
+        while (i < buffer.len - 0x200) : (i += 1) {
+            std.log.warn("{d}", .{i});
+            mem.write(i, buffer[i]);
+        }
     }
 };

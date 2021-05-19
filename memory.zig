@@ -33,7 +33,6 @@ pub const Memory = struct {
             return MemoryError.ProgramTooLarge;
         }
         while (i < buffer.len - 0x200) : (i += 1) {
-            std.log.warn("{d}", .{i});
             mem.write(i, buffer[i]);
         }
     }

@@ -21,7 +21,6 @@ pub const CPU = struct {
     pub fn tick(cpu: *CPU) void {
         var opcode = cpu.fetch();
         cpu.execute(opcode);
-        cpu.pc += 2;
         // opcode = cpu.fetch();
         // cpu.execute(opcode)
         // cpu.pc += 2
@@ -32,7 +31,17 @@ pub const CPU = struct {
         warn("\n{X}", .{opcode});
     }
 
+    // fetch reads the instruction the PC is currently pointing at
+    // An instruction is two bytes, so two successive bytes are read from memory
+    // and then combined
     fn fetch(cpu: *CPU) u16 {
-        return cpu.memory.read(cpu.pc);
+        var high: u16 = cpu.memory.read(cpu.pc);
+        var low: u16 = cpu.memory.read(cpu.pc + 1);
+
+        warn("\n{X}, {X}", .{ high, low });
+
+        cpu.pc += 2;
+
+        return (high << 8) | low;
     }
 };

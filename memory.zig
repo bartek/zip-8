@@ -26,14 +26,13 @@ pub const Memory = struct {
     }
 
     // loadRom loads a buffer into Memory
-    pub fn loadRom(mem: *Memory, buffer: [4096]u8) !void {
-        var i: u12 = 0x200;
-
+    pub fn loadRom(mem: *Memory, buffer: []u8) !void {
         if (buffer.len > 4096) {
             return MemoryError.ProgramTooLarge;
         }
-        while (i < buffer.len - 0x200) : (i += 1) {
-            mem.write(i, buffer[i]);
+
+        for (buffer) |b, index| {
+            mem.write(@intCast(u12, index + 0x200), b);
         }
     }
 };

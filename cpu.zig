@@ -36,6 +36,8 @@ pub const CPU = struct {
     // fetch reads the instruction the PC is currently pointing at
     // An instruction is two bytes, so two successive bytes are read from memory
     // and then combined
+    // The first byte is bitshifted to the left and then ORed with the second
+    // byte. The end result is a 16 bit opcode
     fn fetch(cpu: *CPU) u16 {
         var high: u16 = cpu.memory.read(cpu.pc);
         var low: u16 = cpu.memory.read(cpu.pc + 1);
@@ -49,7 +51,21 @@ pub const CPU = struct {
     // This is done by first obtaining the nibble (or half-byte), which is the
     // first hexadecimal number.
     fn decode(cpu: *CPU, opcode: u16) void {
-        var nibble = @intCast(u8, (opcode & 0xF000) >> 12);
+        //var nibble = @intCast(u8, (opcode & 0xF000) >> 12);
+        var nibble = opcode & 0xF000;
         warn("0x{x}", .{nibble});
+        switch (nibble) {
+            0x0000 => {
+                // The rest of the nibble
+                switch (opcode & 0x000F) {
+                    0x0000 => {
+                        // 0x00E0 -> Clear Screen
+                        warn("Clear screen", .{});
+                    },
+                    else => {},
+                }
+            },
+            else => {},
+        }
     }
 };

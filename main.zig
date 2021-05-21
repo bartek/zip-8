@@ -5,12 +5,15 @@ const cwd = fs.cwd();
 const warn = std.log.warn;
 
 const memory = @import("./memory.zig");
+const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     std.debug.print("Loading CHIP-8", .{});
+
+    // Memory
     var mem = allocator.create(memory.Memory) catch {
         warn("\nCould not allocate memory for Memory", .{});
         return;
@@ -18,12 +21,21 @@ pub fn main() !void {
     defer mem.deinit(allocator);
     mem.init();
 
+    // Display
+    var dis = allocator.create(display.Display) catch {
+        warn("\nCould not allocate memory for Display", .{});
+        return;
+    };
+    defer dis.deinit(allocator);
+    dis.init();
+
+    // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
         warn("\nCould not allocate memory for CPU", .{});
         return;
     };
     defer c.deinit(allocator);
-    c.init(mem);
+    c.init(mem, dis);
 
     // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging

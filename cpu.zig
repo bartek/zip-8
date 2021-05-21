@@ -1,5 +1,6 @@
 const std = @import("std");
 const memory = @import("./memory.zig");
+const display = @import("./display.zig");
 const warn = std.log.warn;
 
 // CPU is the CHIP-8's CPU
@@ -7,9 +8,11 @@ pub const CPU = struct {
     // CHIP-8 Programs are loaded into memory starting at address 200
     pc: u12,
     memory: *memory.Memory,
+    display: *display.Display,
 
-    pub fn init(cpu: *CPU, mem: *memory.Memory) void {
+    pub fn init(cpu: *CPU, mem: *memory.Memory, dis: *display.Display) void {
         cpu.memory = mem;
+        cpu.display = dis;
 
         cpu.pc = 0x0200;
     }
@@ -51,16 +54,17 @@ pub const CPU = struct {
     // This is done by first obtaining the nibble (or half-byte), which is the
     // first hexadecimal number.
     fn decode(cpu: *CPU, opcode: u16) void {
-        //var nibble = @intCast(u8, (opcode & 0xF000) >> 12);
         var nibble = opcode & 0xF000;
         warn("0x{x}", .{nibble});
         switch (nibble) {
             0x0000 => {
+                var low = opcode & 0x000F;
                 // The rest of the nibble
-                switch (opcode & 0x000F) {
+                switch (low) {
                     0x0000 => {
                         // 0x00E0 -> Clear Screen
                         warn("Clear screen", .{});
+                        CLS(cpu);
                     },
                     else => {},
                 }
@@ -69,3 +73,7 @@ pub const CPU = struct {
         }
     }
 };
+
+fn CLS(cpu: *CPU) void {
+    cpu.display.reset();
+}

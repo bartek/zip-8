@@ -11,7 +11,7 @@ const cpu = @import("./cpu.zig");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    std.debug.print("Loading CHIP-8", .{});
+    std.debug.print("Loading CHIP-8\n\n", .{});
 
     // Memory
     var mem = allocator.create(memory.Memory) catch {

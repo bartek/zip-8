@@ -7,9 +7,7 @@ const SCREEN_HEIGHT = 32;
 // The display is 64 pixels wide and 32 pixels tall. Each pixel can be on or
 // off. In other words, each pixel is a boolean.
 pub const Display = struct {
-    // This should be 2d array, so we can access [x][y]
-    // That seems to simplify the process of checking the pixel at particular x
-    // and y coordinates
+    // buffer represents the ram for the Display
     buffer: [SCREEN_WIDTH][SCREEN_HEIGHT]u8,
 
     pub fn init(d: *Display) void {

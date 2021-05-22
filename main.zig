@@ -52,11 +52,6 @@ pub fn main() !void {
     // And load the buffer into the emulators memory
     try mem.loadRom(buffer);
 
-    c.tick();
-    c.tick();
-    c.tick();
-    c.tick();
-    c.tick();
     // The emulator runs an infinite loop and does three tasks in succession:
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
@@ -70,7 +65,7 @@ pub fn main() !void {
         //
         //  Then immediately increment the PC by 2, to be ready to fetch the
         //  next opcode.
-        //c.tick();
+        c.tick();
     }
 }
 

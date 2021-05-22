@@ -3,6 +3,8 @@ const memory = @import("./memory.zig");
 const display = @import("./display.zig");
 const warn = std.log.warn;
 
+const utils = @import("./utils.zig");
+
 // CPU is the CHIP-8's CPU
 pub const CPU = struct {
     // CHIP-8 Programs are loaded into memory starting at address 200
@@ -78,12 +80,18 @@ pub const CPU = struct {
                 var v = opcode & 0x0FFF;
                 cpu.index_register = v;
             },
+            0xd000 => {
+                warn("Draw a sprite at (VX, Y) that is n rows tall.", .{});
+            },
             0x6000 => {
                 warn("Set VX to NN", .{});
                 var v = opcode & 0x00FF;
                 cpu.vx_register = v;
             },
-            else => {},
+            else => {
+                warn("Not implemented", .{});
+                utils.waitForInput();
+            },
         }
     }
 };

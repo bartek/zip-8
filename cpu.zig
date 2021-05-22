@@ -5,6 +5,10 @@ const warn = std.log.warn;
 
 const utils = @import("./utils.zig");
 
+// FIXME: This is re-declared in display.zig. Can/should that be resolved?
+const screenWidth = 64;
+const screenHeight = 32;
+
 // CPU is the CHIP-8's CPU
 pub const CPU = struct {
     // CHIP-8 Programs are loaded into memory starting at address 200
@@ -90,20 +94,57 @@ pub const CPU = struct {
                 warn("Draw a sprite at (VX, Y) that is n rows tall.", .{});
 
                 // Get X and Y from appropriate registers
-                var x = cpu.vx_register;
-                var y = cpu.vy_register;
+                var vx = cpu.vx_register;
+                var vy = cpu.vy_register;
 
                 // Set VF to 0
                 cpu.vf_register = 0x000;
+
+                // Ensure screen size is considered
+                var start_x = vx % screenWidth;
+                var start_y = vy % screenHeight;
 
                 // For N rows
                 var rows = opcode & 0x000F;
                 var row: u8 = 0;
                 while (row < rows) : (row += 1) {
+                    var y = start_y + row;
+                    if (y >= 32) {
+                        warn("Skipping, y >= 32", .{});
+                        continue;
+                    }
                     warn("Drawing Row {d}", .{row});
                     // Get one byte of sprite data from the memory address in
-                    // the I register
-                    var sprite_byte = cpu.memory.read(@intCast(u12, cpu.index_register));
+                    // the I register. This is equivalent to a pixel on the screen.
+                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.index_register));
+
+                    // For each of the 8 pixels/bits in this sprite row:
+                    var col: u8 = 0;
+                    while (col < 8) : (col += 1) {
+                        var x = start_x + col;
+                        if (x >= 64) {
+                            warn("Skipping, x >= 64", .{});
+                            continue;
+                        }
+
+                        // Get the bit at the column to see if it's been set
+                        var mask = 0x10 * col;
+                        var bit = pixel & mask;
+                        warn("bit {d}", .{bit});
+                        if (bit == 0) {
+                            continue;
+                        }
+
+                        // If the current pixel (bit) in the sprite row is on and the
+                        // pixel at coordinates X, Y on the screen is also on, turn
+                        // off the pixel and set it VF to 1
+                        var other_pixel = cpu.display.read(x, y);
+                        warn("other pixel {d}", .{other_pixel});
+                        if (other_pixel == 1) {
+                            cpu.display.write(x, y, 0);
+                            cpu.vf_register = 1;
+                        }
+                    }
                 }
             },
             0x6000 => {

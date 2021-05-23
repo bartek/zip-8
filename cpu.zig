@@ -81,6 +81,10 @@ pub const CPU = struct {
                     else => {},
                 }
             },
+            0x1000 => {
+                warn("1NNN: Jump. Jump PC to NNN", .{});
+                cpu.pc = @intCast(u12, opcode & 0x0FFF);
+            },
             0xa000 => {
                 warn("Set index register to NNN", .{});
                 var v = opcode & 0x0FFF;
@@ -149,6 +153,11 @@ pub const CPU = struct {
             },
             0x6000 => {
                 warn("Set VX to NN", .{});
+                var v = opcode & 0x00FF;
+                cpu.vx_register = v;
+            },
+            0x7000 => {
+                warn("7XNN: Add. Add the value NN to X", .{});
                 var v = opcode & 0x00FF;
                 cpu.vx_register = v;
             },

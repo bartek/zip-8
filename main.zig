@@ -66,6 +66,10 @@ pub fn main() !void {
         //  Then immediately increment the PC by 2, to be ready to fetch the
         //  next opcode.
         c.tick();
+
+        // do drawing stuff. iterate over the screens rows and columns
+        // and draw a pixel on the screen. maybe sdl is fine for this, just some
+        // overhead
     }
 }
 

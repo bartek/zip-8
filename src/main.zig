@@ -1,5 +1,8 @@
 const std = @import("std");
 
+// TODO: Ref
+// https://gigi.nullneuron.net/gigilabs/sdl2-pixel-drawing/
+
 // SDL ref:
 // https://gist.github.com/peterhellberg/421735d78a9e01fcde245dc84f6f3ecc
 const sdl = @cImport({
@@ -57,18 +60,26 @@ pub fn main() !void {
     dis.init();
 
     // Create SDL window
-    const screen = sdl.SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 300, 73, sdl.SDL_WINDOW_OPENGL) orelse
+    const screen = sdl.SDL_CreateWindow("zip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenWidth, screenHeight, sdl.SDL_WINDOW_OPENGL) orelse
         {
         sdl.SDL_Log("Unable to create window: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyWindow(screen);
 
+    // SDL Renderer
     const renderer = sdl.SDL_CreateRenderer(screen, -1, 0) orelse {
         sdl.SDL_Log("Unable to create renderer: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyRenderer(renderer);
+
+    // SDL Texture
+    const texture = sdl.SDL_CreateTexture(renderer, sdl.SDL_PIXELFORMAT_ARGB8888, sdl.SDL_TEXTUREACCESS_STATIC, screenWidth, screenHeight) orelse {
+        sdl.SDL_Log("Unable to create texture: %s", sdl.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer sdl.SDL_DestroyTexture(texture);
 
     // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
@@ -133,6 +144,12 @@ pub fn main() !void {
                 }
             }
         }
+
+        _ = sdl.SDL_RenderClear(renderer);
+        _ = sdl.SDL_RenderCopy(renderer, texture, null, null);
+        sdl.SDL_RenderPresent(renderer);
+
+        sdl.SDL_Delay(17);
     }
 }
 

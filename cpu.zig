@@ -9,6 +9,18 @@ const utils = @import("./utils.zig");
 const screenWidth = 64;
 const screenHeight = 32;
 
+const Registers = struct {
+    // Index register
+    i: u16,
+
+    // Display based registers
+    // FIXME: Probably make this a single V register. An array of 16 usually
+    // refered to as Vx where x is a hexadecimal digit (0 through F)
+    vx: u16,
+    vy: u16,
+    vf: u16,
+};
+
 // CPU is the CHIP-8's CPU
 pub const CPU = struct {
     // CHIP-8 Programs are loaded into memory starting at address 200
@@ -16,23 +28,20 @@ pub const CPU = struct {
     memory: *memory.Memory,
     display: *display.Display,
 
-    // Registers
-    index_register: u16,
-
-    // Display based registers
-    vx_register: u16,
-    vy_register: u16,
-    vf_register: u16,
+    registers: Registers,
 
     pub fn init(cpu: *CPU, mem: *memory.Memory, dis: *display.Display) void {
         cpu.memory = mem;
         cpu.display = dis;
 
         cpu.pc = 0x0200;
-        cpu.index_register = 0x000;
-        cpu.vx_register = 0x000;
-        cpu.vy_register = 0x000;
-        cpu.vf_register = 0x000;
+
+        cpu.registers = Registers{
+            .i = 0x000,
+            .vx = 0x000,
+            .vy = 0x000,
+            .vf = 0x000,
+        };
     }
 
     pub fn deinit(cpu: *CPU, alloc: *std.mem.Allocator) void {
@@ -88,7 +97,7 @@ pub const CPU = struct {
             0xa000 => {
                 warn("Set index register to NNN", .{});
                 var v = opcode & 0x0FFF;
-                cpu.index_register = v;
+                cpu.registers.i = v;
             },
             0xd000 => {
                 // DXYN
@@ -98,68 +107,60 @@ pub const CPU = struct {
                 warn("Draw a sprite at (VX, Y) that is n rows tall.", .{});
 
                 // Get X and Y from appropriate registers
-                var vx = cpu.vx_register;
-                var vy = cpu.vy_register;
+                var vx = cpu.registers.vx;
+                var vy = cpu.registers.vy;
 
                 // Set VF to 0
-                cpu.vf_register = 0x000;
+                cpu.registers.vf = 0x000;
 
                 // Ensure screen size is considered
-                var start_x = vx % screenWidth;
-                var start_y = vy % screenHeight;
+                //var start_x = vx % screenWidth;
+                //var start_y = vy % screenHeight;
 
                 // For N rows
                 var rows = opcode & 0x000F;
+
                 var row: u8 = 0;
                 while (row < rows) : (row += 1) {
-                    var y = start_y + row;
-                    if (y >= 32) {
-                        warn("Skipping, y >= 32", .{});
-                        continue;
-                    }
                     warn("Drawing Row {d}", .{row});
+
                     // Get one byte of sprite data from the memory address in
                     // the I register. This is equivalent to a pixel on the screen.
-                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.index_register));
+                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i));
 
                     // For each of the 8 pixels/bits in this sprite row:
                     var col: u8 = 0;
                     while (col < 8) : (col += 1) {
-                        var x = start_x + col;
-                        if (x >= 64) {
-                            warn("Skipping, x >= 64", .{});
-                            continue;
+                        var new_value = row >> (@intCast(u3, 7 - col)) & 0x01;
+                        if (new_value == 1) {
+                            var xi = (vx + col) % screenWidth;
+                            var yj = (vy + row) % screenHeight;
+
+                            var old_value = cpu.display.read(xi, yj);
+                            if (old_value == 1) {
+                                cpu.registers.vf = 1;
+                            }
+
+                            //var display_value = ((new_value == 1) ^ old_value);
+                            cpu.display.write(xi, yj, @intCast(u1, new_value ^ 1));
                         }
 
                         // Get the bit at the column to see if it's been set
-                        var mask = 0x10 * col;
-                        var bit = pixel & mask;
-                        warn("bit {d}", .{bit});
-                        if (bit == 0) {
-                            continue;
-                        }
-
-                        // If the current pixel (bit) in the sprite row is on and the
-                        // pixel at coordinates X, Y on the screen is also on, turn
-                        // off the pixel and set it VF to 1
-                        var other_pixel = cpu.display.read(x, y);
-                        warn("other pixel {d}", .{other_pixel});
-                        if (other_pixel == 1) {
-                            cpu.display.write(x, y, 0);
-                            cpu.vf_register = 1;
-                        }
+                        //var mask = 0x10 * col;
+                        //var bit = pixel & mask;
+                        //warn("bit {d}", .{bit});
                     }
                 }
             },
             0x6000 => {
                 warn("Set VX to NN", .{});
                 var v = opcode & 0x00FF;
-                cpu.vx_register = v;
+                cpu.registers.vx = v;
             },
             0x7000 => {
                 warn("7XNN: Add. Add the value NN to X", .{});
                 var v = opcode & 0x00FF;
-                cpu.vx_register = v;
+                cpu.registers.vx = v;
             },
             else => {
                 warn("Not implemented", .{});

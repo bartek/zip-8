@@ -153,8 +153,8 @@ pub fn main() !void {
                 if (pixel == 1) {
                     warn("drawing at {d}, {d}", .{ i, j });
                     const rect = &sdl.SDL_Rect{
-                        .x = i *scale,
-                        .y = i *scale,
+                        .x = i * scale,
+                        .y = i * scale,
                         .w = scale,
                         .h = scale,
                     };

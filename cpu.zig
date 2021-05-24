@@ -122,23 +122,26 @@ pub const CPU = struct {
 
                     // Get one byte of sprite data from the memory address in
                     // the I register. This is equivalent to a pixel on the screen.
-                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i));
+                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i + row));
 
                     // For each of the 8 pixels/bits in this sprite row:
                     var col: u8 = 0;
                     while (col < 8) : (col += 1) {
                         var new_value = row >> (@intCast(u3, 7 - col)) & 0x01;
+
                         if (new_value == 1) {
-                            var xi = (vx + col) % screenWidth;
-                            var yj = (vy + row) % screenHeight;
-
-                            var bit = cpu.display.read(xi, yj);
-                            if (bit == 1) {
-                                cpu.registers.vf = 1;
-                            }
-
-                            cpu.display.write(xi, yj, @intCast(u1, bit ^ 1));
+                            continue;
                         }
+
+                        var xi = (vx + col) % screenWidth;
+                        var yj = (vy + row) % screenHeight;
+
+                        var bit = cpu.display.read(xi, yj);
+                        if (bit == 1) {
+                            cpu.registers.vf = 1;
+                        }
+
+                        cpu.display.write(xi, yj, @intCast(u1, bit ^ 1));
 
                         // Get the bit at the column to see if it's been set
                         //var mask = 0x10 * col;

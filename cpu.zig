@@ -48,6 +48,7 @@ pub const CPU = struct {
         alloc.destroy(cpu);
     }
 
+    // tick ticks the CPU
     pub fn tick(cpu: *CPU) void {
         var opcode = cpu.fetch();
         var instruction = cpu.decode(opcode);
@@ -113,16 +114,11 @@ pub const CPU = struct {
                 // Set VF to 0
                 cpu.registers.vf = 0x000;
 
-                // Ensure screen size is considered
-                //var start_x = vx % screenWidth;
-                //var start_y = vy % screenHeight;
-
                 // For N rows
                 var rows = opcode & 0x000F;
 
                 var row: u8 = 0;
                 while (row < rows) : (row += 1) {
-                    warn("Drawing Row {d}", .{row});
 
                     // Get one byte of sprite data from the memory address in
                     // the I register. This is equivalent to a pixel on the screen.
@@ -136,13 +132,12 @@ pub const CPU = struct {
                             var xi = (vx + col) % screenWidth;
                             var yj = (vy + row) % screenHeight;
 
-                            var old_value = cpu.display.read(xi, yj);
-                            if (old_value == 1) {
+                            var bit = cpu.display.read(xi, yj);
+                            if (bit == 1) {
                                 cpu.registers.vf = 1;
                             }
 
-                            //var display_value = ((new_value == 1) ^ old_value);
-                            cpu.display.write(xi, yj, @intCast(u1, new_value ^ 1));
+                            cpu.display.write(xi, yj, @intCast(u1, bit ^ 1));
                         }
 
                         // Get the bit at the column to see if it's been set

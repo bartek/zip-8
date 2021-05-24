@@ -8,6 +8,12 @@ const memory = @import("./memory.zig");
 const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
 
+// FIXME: This is re-declared in display.zig. Can/should that be resolved?
+const screenWidth = 64;
+const screenHeight = 32;
+
+const print = std.debug.print;
+
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
@@ -70,6 +76,19 @@ pub fn main() !void {
         // do drawing stuff. iterate over the screens rows and columns
         // and draw a pixel on the screen. maybe sdl is fine for this, just some
         // overhead
+        var i: u16 = 0;
+        while (i < screenWidth) : (i += 1) {
+            var j: u16 = 0;
+            print("\n", .{});
+            while (j < screenHeight) : (j += 1) {
+                var pixel = dis.read(i, j);
+                if (pixel == 1) {
+                    print(".", .{});
+                } else {
+                    print(" ", .{});
+                }
+            }
+        }
     }
 }
 

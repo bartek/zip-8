@@ -1,5 +1,11 @@
 const std = @import("std");
 
+// SDL ref:
+// https://gist.github.com/peterhellberg/421735d78a9e01fcde245dc84f6f3ecc
+const sdl = @cImport({
+    @cInclude("SDL2/SDL.h");
+});
+
 const fs = std.fs;
 const cwd = fs.cwd();
 const warn = std.log.warn;
@@ -12,12 +18,27 @@ const cpu = @import("./cpu.zig");
 const screenWidth = 64;
 const screenHeight = 32;
 
+// See https://github.com/zig-lang/zig/issues/565
+const SDL_WINDOWPOS_UNDEFINED = @bitCast(c_int, sdl.SDL_WINDOWPOS_UNDEFINED_MASK);
+extern fn SDL_PollEvent(event: *sdl.SDL_Event) c_int;
+
+inline fn SDL_RWclose(ctx: [*]sdl.SDL_RWops) c_int {
+    return ctx[0].close.?(ctx);
+}
+
 const print = std.debug.print;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
     std.debug.print("Loading CHIP-8\n\n", .{});
+
+    // SDL
+    if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
+        sdl.SDL_Log("Unable to initialize SDL: %s", sdl.SDL_GetError());
+        return error.SDLInitializationFailed;
+    }
+    defer sdl.SDL_Quit();
 
     // Memory
     var mem = allocator.create(memory.Memory) catch {
@@ -34,6 +55,20 @@ pub fn main() !void {
     };
     defer dis.deinit(allocator);
     dis.init();
+
+    // Create SDL window
+    const screen = sdl.SDL_CreateWindow("My Game Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 300, 73, sdl.SDL_WINDOW_OPENGL) orelse
+        {
+        sdl.SDL_Log("Unable to create window: %s", sdl.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer sdl.SDL_DestroyWindow(screen);
+
+    const renderer = sdl.SDL_CreateRenderer(screen, -1, 0) orelse {
+        sdl.SDL_Log("Unable to create renderer: %s", sdl.SDL_GetError());
+        return error.SDLInitializationFailed;
+    };
+    defer sdl.SDL_DestroyRenderer(renderer);
 
     // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
@@ -62,8 +97,18 @@ pub fn main() !void {
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
     // Execute the instruction and do what it tells you.
-    while (true) {
-        std.time.sleep(1000);
+    var t: u16 = 0;
+    var quit = false;
+    while (!quit) {
+        var event: sdl.SDL_Event = undefined;
+        while (SDL_PollEvent(&event) != 0) {
+            switch (event.@"type") {
+                sdl.SDL_QUIT => {
+                    quit = true;
+                },
+                else => {},
+            }
+        }
 
         // Fetch. Read the instruction that PC is currently pointing at from
         // memory. An instruction is two bytes, so read two successive bytes
@@ -79,13 +124,12 @@ pub fn main() !void {
         var i: u16 = 0;
         while (i < screenWidth) : (i += 1) {
             var j: u16 = 0;
-            print("\n", .{});
             while (j < screenHeight) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
-                    print(".", .{});
-                } else {
-                    print(" ", .{});
+                    if (sdl.SDL_RenderDrawPoint(renderer, i, j) != 0) {
+                        warn("could not draw pixel", .{});
+                    }
                 }
             }
         }

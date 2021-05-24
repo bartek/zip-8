@@ -113,8 +113,6 @@ pub fn main() !void {
     // And load the buffer into the emulators memory
     try mem.loadRom(buffer);
 
-    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 100, 200, 255);
-
     // The emulator runs an infinite loop and does three tasks in succession:
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
@@ -140,6 +138,7 @@ pub fn main() !void {
         //  next opcode.
         c.tick();
 
+        _ = sdl.SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         _ = sdl.SDL_RenderClear(renderer);
 
         // do drawing stuff. iterate over the screens rows and columns
@@ -151,20 +150,19 @@ pub fn main() !void {
             while (j < SCREEN_HEIGHT) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
-                    warn("drawing at {d}, {d}", .{ i, j });
                     const rect = &sdl.SDL_Rect{
                         .x = i * scale,
-                        .y = i * scale,
+                        .y = j * scale,
                         .w = scale,
                         .h = scale,
                     };
 
+                    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
                     _ = sdl.SDL_RenderDrawRect(renderer, rect);
                 }
             }
         }
 
-        _ = sdl.SDL_RenderCopy(renderer, texture, null, null);
         sdl.SDL_RenderPresent(renderer);
 
         sdl.SDL_Delay(17);

@@ -18,8 +18,17 @@ const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
 
 // FIXME: This is re-declared in display.zig. Can/should that be resolved?
-const screenWidth = 64;
-const screenHeight = 32;
+const SCREEN_WIDTH = 43;
+const SCREEN_HEIGHT = 32;
+const scale = 4;
+
+fn screenWidth() u16 {
+    return SCREEN_WIDTH * scale;
+}
+
+fn screenHeight() u16 {
+    return SCREEN_HEIGHT * scale;
+}
 
 // See https://github.com/zig-lang/zig/issues/565
 const SDL_WINDOWPOS_UNDEFINED = @bitCast(c_int, sdl.SDL_WINDOWPOS_UNDEFINED_MASK);
@@ -60,7 +69,7 @@ pub fn main() !void {
     dis.init();
 
     // Create SDL window
-    const screen = sdl.SDL_CreateWindow("zip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenWidth, screenHeight, sdl.SDL_WINDOW_OPENGL) orelse
+    const screen = sdl.SDL_CreateWindow("zip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenWidth(), screenHeight(), sdl.SDL_WINDOW_OPENGL) orelse
         {
         sdl.SDL_Log("Unable to create window: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
@@ -75,7 +84,7 @@ pub fn main() !void {
     defer sdl.SDL_DestroyRenderer(renderer);
 
     // SDL Texture
-    const texture = sdl.SDL_CreateTexture(renderer, sdl.SDL_PIXELFORMAT_ARGB8888, sdl.SDL_TEXTUREACCESS_STATIC, screenWidth, screenHeight) orelse {
+    const texture = sdl.SDL_CreateTexture(renderer, sdl.SDL_PIXELFORMAT_ARGB8888, sdl.SDL_TEXTUREACCESS_STATIC, screenWidth(), screenHeight()) orelse {
         sdl.SDL_Log("Unable to create texture: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -104,6 +113,8 @@ pub fn main() !void {
     // And load the buffer into the emulators memory
     try mem.loadRom(buffer);
 
+    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 100, 200, 255);
+
     // The emulator runs an infinite loop and does three tasks in succession:
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
@@ -129,23 +140,30 @@ pub fn main() !void {
         //  next opcode.
         c.tick();
 
+        _ = sdl.SDL_RenderClear(renderer);
+
         // do drawing stuff. iterate over the screens rows and columns
         // and draw a pixel on the screen. maybe sdl is fine for this, just some
         // overhead
         var i: u16 = 0;
-        while (i < screenWidth) : (i += 1) {
+        while (i < SCREEN_WIDTH) : (i += 1) {
             var j: u16 = 0;
-            while (j < screenHeight) : (j += 1) {
+            while (j < SCREEN_HEIGHT) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
-                    if (sdl.SDL_RenderDrawPoint(renderer, i, j) != 0) {
-                        warn("could not draw pixel", .{});
-                    }
+                    warn("drawing at {d}, {d}", .{ i, j });
+                    const rect = &sdl.SDL_Rect{
+                        .x = i *scale,
+                        .y = i *scale,
+                        .w = scale,
+                        .h = scale,
+                    };
+
+                    _ = sdl.SDL_RenderDrawRect(renderer, rect);
                 }
             }
         }
 
-        _ = sdl.SDL_RenderClear(renderer);
         _ = sdl.SDL_RenderCopy(renderer, texture, null, null);
         sdl.SDL_RenderPresent(renderer);
 

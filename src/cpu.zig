@@ -103,7 +103,7 @@ pub const CPU = struct {
             0xd000 => {
                 // DXYN
                 // Draw an N pixels tall sprite from the memory location that
-                // the I index register is holding to the sreen, at the horizontal X
+                // the I index register is holding to the screen, at the horizontal X
                 // coordinate in VX register and the Y coordinate in VY register
                 warn("Draw a sprite at (VX, Y) that is n rows tall.", .{});
 
@@ -112,7 +112,7 @@ pub const CPU = struct {
                 var vy = cpu.registers.vy;
 
                 // Set VF to 0
-                cpu.registers.vf = 0x000;
+                cpu.registers.vf = 0;
 
                 // For N rows
                 var rows = opcode & 0x000F;
@@ -149,7 +149,7 @@ pub const CPU = struct {
             0x7000 => {
                 warn("7XNN: Add. Add the value NN to X", .{});
                 var v = opcode & 0x00FF;
-                cpu.registers.vx = v;
+                cpu.registers.vx += v;
             },
             else => {
                 warn("Not implemented", .{});

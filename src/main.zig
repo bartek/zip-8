@@ -18,7 +18,7 @@ const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
 
 // FIXME: This is re-declared in display.zig. Can/should that be resolved?
-const SCREEN_WIDTH = 43;
+const SCREEN_WIDTH = 64;
 const SCREEN_HEIGHT = 32;
 const scale = 10;
 

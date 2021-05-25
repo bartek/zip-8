@@ -100,11 +100,6 @@ pub fn main() !void {
 
     // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging
-    //var buffer: [4096]u8 = undefined;
-    //var file = cwd.openFile("./roms/ibm-logo.ch8", .{}) catch |err| {
-    //};
-    //defer file.close();
-    //const end_index = try file.readAll(&buffer);
     const buffer = cwd.readFileAlloc(allocator, "./roms/ibm-logo.ch8", 4096) catch |err| {
         warn("Unable to open file: {s}\n", .{@errorName(err)});
         return err;

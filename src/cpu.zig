@@ -80,9 +80,9 @@ pub const CPU = struct {
         warn("nibble 0x{x}", .{nibble});
         switch (nibble) {
             0x0000 => {
-                var low = opcode & 0x000F;
+                var rest = opcode & 0x000F;
                 // The rest of the nibble
-                switch (low) {
+                switch (rest) {
                     0x0000 => {
                         // 0x00E0 -> Clear Screen
                         warn("Clear screen", .{});
@@ -150,6 +150,28 @@ pub const CPU = struct {
                 warn("7XNN: Add. Add the value NN to X", .{});
                 var v = opcode & 0x00FF;
                 cpu.registers.vx += v;
+            },
+            0x8000 => {
+                // Instructions under 0x8000 need further decoding beyond just
+                // the first nibble. All these instructions are logical or
+                // arithmetic operations.
+                warn("8XXX: Decoding further", .{});
+
+                var rest = opcode & 0x000F;
+
+                switch (rest) {
+                    0x0000 => {
+                        warn("0x8XY0: Set VX to the value of VY", .{});
+                        cpu.registers.vx = cpu.registers.vy;
+                    },
+                    0x0001 => {
+                        warn("0x8XY1: Logical OR, VX set to bitwise OR of VX and VY", .{});
+                        cpu.registers.vx = cpu.registers.vx | cpu.registers.vy;
+                },
+                    else => {
+                        warn("Not implemented", .{});
+                    },
+                }
             },
             else => {
                 warn("Not implemented", .{});

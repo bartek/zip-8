@@ -158,7 +158,7 @@ pub fn main() !void {
                     };
 
                     _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 200, 255);
-                    _ = sdl.SDL_RenderDrawRect(renderer, rect);
+                    _ = sdl.SDL_RenderFillRect(renderer, rect);
                 }
             }
         }

@@ -127,25 +127,17 @@ pub const CPU = struct {
                     // For each of the 8 pixels/bits in this sprite row:
                     var i: u8 = 0;
                     while (i < 8) : (i += 1) {
-                        var new_value = row >> (@intCast(u3, 7 - i)) & 0x01;
-
-                        if (new_value == 1) {
+                        var bit = row >> (@intCast(u3, 7 - i)) & 0x01;
+                        if (bit == 1) {
                             var xi = (vx + i) % screenWidth;
                             var yj = (vy + j) % screenHeight;
-
                             var old_value = cpu.display.read(xi, yj);
                             if (old_value == 1) {
                                 cpu.registers.vf = 1;
                             }
 
-                            var display_value = (old_value ^ new_value);
-                            cpu.display.write(xi, yj, @intCast(u1, display_value));
+                            cpu.display.write(xi, yj, @intCast(u1, old_value ^ 1));
                         }
-
-                        // Get the bit at the column to see if it's been set
-                        //var mask = 0x10 * col;
-                        //var bit = pixel & mask;
-                        //warn("bit {d}", .{bit});
                     }
                 }
             },

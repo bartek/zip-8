@@ -20,7 +20,7 @@ const cpu = @import("./cpu.zig");
 // FIXME: This is re-declared in display.zig. Can/should that be resolved?
 const SCREEN_WIDTH = 43;
 const SCREEN_HEIGHT = 32;
-const scale = 4;
+const scale = 10;
 
 fn screenWidth() u16 {
     return SCREEN_WIDTH * scale;
@@ -157,7 +157,7 @@ pub fn main() !void {
                         .h = scale,
                     };
 
-                    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+                    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 200, 255);
                     _ = sdl.SDL_RenderDrawRect(renderer, rect);
                 }
             }

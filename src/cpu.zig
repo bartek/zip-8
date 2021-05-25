@@ -117,31 +117,30 @@ pub const CPU = struct {
                 // For N rows
                 var rows = opcode & 0x000F;
 
-                var row: u8 = 0;
-                while (row < rows) : (row += 1) {
+                var j: u8 = 0;
+                while (j < rows) : (j += 1) {
 
                     // Get one byte of sprite data from the memory address in
                     // the I register. This is equivalent to a pixel on the screen.
-                    var pixel: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i + row));
+                    var row: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i + j));
 
                     // For each of the 8 pixels/bits in this sprite row:
-                    var col: u8 = 0;
-                    while (col < 8) : (col += 1) {
-                        var new_value = row >> (@intCast(u3, 7 - col)) & 0x01;
+                    var i: u8 = 0;
+                    while (i < 8) : (i += 1) {
+                        var new_value = row >> (@intCast(u3, 7 - i)) & 0x01;
 
                         if (new_value == 1) {
-                            continue;
+                            var xi = (vx + i) % screenWidth;
+                            var yj = (vy + j) % screenHeight;
+
+                            var old_value = cpu.display.read(xi, yj);
+                            if (old_value == 1) {
+                                cpu.registers.vf = 1;
+                            }
+
+                            var display_value = (old_value ^ new_value);
+                            cpu.display.write(xi, yj, @intCast(u1, display_value));
                         }
-
-                        var xi = (vx + col) % screenWidth;
-                        var yj = (vy + row) % screenHeight;
-
-                        var bit = cpu.display.read(xi, yj);
-                        if (bit == 1) {
-                            cpu.registers.vf = 1;
-                        }
-
-                        cpu.display.write(xi, yj, @intCast(u1, bit ^ 1));
 
                         // Get the bit at the column to see if it's been set
                         //var mask = 0x10 * col;

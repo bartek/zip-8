@@ -219,8 +219,48 @@ pub const CPU = struct {
                         warn("0x8XY1: Logical OR, VX set to bitwise OR of VX and VY", .{});
                         cpu.registers.vx = cpu.registers.vx | cpu.registers.vy;
                     },
+                    0x0002 => {
+                        warn("0x8XY2: Set VX to the value of VX & VY (bitwise AND)", .{});
+                        cpu.registers.vx = cpu.registers.vx & cpu.registers.vy;
+                    },
+                    0x0003 => {
+                        warn("0x8XY3: Set VX to the value of VX xor VY", .{});
+                        cpu.registers.vx = cpu.registers.vx ^ cpu.registers.vy;
+                    },
+                    0x0004 => {
+                        warn("0x8XY4: Set VX to the value of VX plus VY", .{});
+                        var v = cpu.registers.vx + cpu.registers.vy;
+                        cpu.registers.vx = v;
+
+                        // Additonally, if the result is larger than 255, the flag register
+                        // VF is set to 1. If it's not, set to 0
+                        if (v > 255) {
+                            cpu.registers.vf = 1;
+                        } else {
+                            cpu.registers.vf = 0;
+                        }
+                    },
+                    0x0005 => {
+                        warn("0x8XY5: Set VX to the value of VX minus VY", .{});
+                        var v = cpu.registers.vx - cpu.registers.vy;
+
+                        if (cpu.registers.vx > cpu.registers.vy) {
+                            cpu.registers.vf = 1;
+                        } else {
+                        cpu.registers.vf = 0;
+                        }
+
+                        cpu.registers.vx = v;
+
+                    },
+                    0x0006 => {
+                        warn("0x8XY6: Set VX to the value of VY then shift VX 1 bit to the right or left", .{});
+                        cpu.registers.vx = cpu.registers.vy;
+                        cpu.registers.vx = cpu.registers.vx & 0x1;
+                        cpu.registers.vf >>= 1;
+                    },
                     else => {
-                        warn("Not implemented", .{});
+                        warn("Not implemented 0x{x}", .{rest});
                         utils.waitForInput();
                     },
                 }

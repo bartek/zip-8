@@ -100,7 +100,7 @@ pub fn main() !void {
 
     // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging
-    const buffer = cwd.readFileAlloc(allocator, "./roms/ibm-logo.ch8", 4096) catch |err| {
+    const buffer = cwd.readFileAlloc(allocator, "./roms/MAZE", 4096) catch |err| {
         warn("Unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };

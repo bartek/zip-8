@@ -95,10 +95,27 @@ pub const CPU = struct {
                 warn("1NNN: Jump. Jump PC to NNN", .{});
                 cpu.pc = @intCast(u12, opcode & 0x0FFF);
             },
+            0x3000, => {
+                warn("3XNN: Skip one instruction if the value in VX is equal to NN", .{});
+                var v = opcode & 0x00FF;
+                if (cpu.registers.vx == v) {
+                    // Jump ahead
+                    cpu.pc += 2;
+                }
+            },
             0xa000 => {
                 warn("Set index register to NNN", .{});
                 var v = opcode & 0x0FFF;
                 cpu.registers.i = v;
+            },
+            0xc000 => {
+                warn("CXNN: Random", .{});
+                var nn = opcode & 0x00FF;
+
+                var rng = std.rand.DefaultPrng.init(0);
+                const r = rng.random.intRangeLessThan(u16, 0, 255);
+                warn("{d}", .{r});
+                cpu.registers.vx = r & nn;
             },
             0xd000 => {
                 // DXYN
@@ -170,6 +187,7 @@ pub const CPU = struct {
                 },
                     else => {
                         warn("Not implemented", .{});
+                        utils.waitForInput();
                     },
                 }
             },

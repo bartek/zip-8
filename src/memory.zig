@@ -17,11 +17,11 @@ pub const Memory = struct {
         alloc.destroy(mem);
     }
 
-    pub fn read(mem: *Memory, address: u12) u8 {
+    pub fn read(mem: *Memory, address: u16) u8 {
         return mem.memory[address];
     }
 
-    pub fn write(mem: *Memory, address: u12, value: u8) void {
+    pub fn write(mem: *Memory, address: u16, value: u8) void {
         mem.memory[address] = value;
     }
 
@@ -32,7 +32,7 @@ pub const Memory = struct {
         }
 
         for (buffer) |b, index| {
-            mem.write(@intCast(u12, index + 0x200), b);
+            mem.write(@intCast(u16, index + 0x200), b);
         }
     }
 };

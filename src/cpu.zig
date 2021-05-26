@@ -24,9 +24,13 @@ const Registers = struct {
 // CPU is the CHIP-8's CPU
 pub const CPU = struct {
     // CHIP-8 Programs are loaded into memory starting at address 200
-    pc: u12,
+    pc: u16,
     memory: *memory.Memory,
     display: *display.Display,
+
+    // Stack & Stack Pointer
+    stack: [16]u16,
+    sp: u16,
 
     registers: Registers,
 
@@ -35,6 +39,7 @@ pub const CPU = struct {
         cpu.display = dis;
 
         cpu.pc = 0x0200;
+        cpu.sp = 0;
 
         cpu.registers = Registers{
             .i = 0x000,
@@ -88,6 +93,12 @@ pub const CPU = struct {
                         warn("Clear screen", .{});
                         CLS(cpu);
                     },
+                    0x00E => {
+                        warn("Return from a subroutine", .{});
+                        cpu.sp -= 1;
+                        cpu.pc = cpu.stack[cpu.sp];
+                        cpu.stack[cpu.sp] = 0;
+                    },
                     else => {},
                 }
             },
@@ -95,11 +106,34 @@ pub const CPU = struct {
                 warn("1NNN: Jump. Jump PC to NNN", .{});
                 cpu.pc = @intCast(u12, opcode & 0x0FFF);
             },
-            0x3000, => {
+            0x2000 => {
+                warn("2NNN: Call sub routine at location NNN", .{});
+
+                // First push the current PC to the stack, so the subroutine can
+                // return later.
+                cpu.stack[cpu.sp] = cpu.pc;
+                cpu.sp += 1;
+                cpu.pc = opcode & 0x0FFF;
+            },
+            0x3000 => {
                 warn("3XNN: Skip one instruction if the value in VX is equal to NN", .{});
                 var v = opcode & 0x00FF;
                 if (cpu.registers.vx == v) {
                     // Jump ahead
+                    cpu.pc += 2;
+                }
+            },
+            0x4000 => {
+                warn("4XNN: Skip one instruction if the value in VX is *not* equal to NN", .{});
+                var v = opcode & 0x00FF;
+                if (cpu.registers.vx != v) {
+                    // Jump ahead
+                    cpu.pc += 2;
+                }
+            },
+            0x5000 => {
+                warn("5XY0: Skips if the value in VX and VY are equal", .{});
+                if (cpu.registers.vx == cpu.registers.vy) {
                     cpu.pc += 2;
                 }
             },
@@ -184,11 +218,17 @@ pub const CPU = struct {
                     0x0001 => {
                         warn("0x8XY1: Logical OR, VX set to bitwise OR of VX and VY", .{});
                         cpu.registers.vx = cpu.registers.vx | cpu.registers.vy;
-                },
+                    },
                     else => {
                         warn("Not implemented", .{});
                         utils.waitForInput();
                     },
+                }
+            },
+            0x9000 => {
+                warn("5XY0: Skips if the value in VX and VY are *not* equal", .{});
+                if (cpu.registers.vx != cpu.registers.vy) {
+                    cpu.pc += 2;
                 }
             },
             else => {

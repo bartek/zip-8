@@ -21,6 +21,10 @@ pub const Memory = struct {
         return mem.memory[address];
     }
 
+    pub fn readRange(mem: *Memory, start: u16, end: u16) []u8 {
+        return mem.memory[start..end];
+    }
+
     pub fn write(mem: *Memory, address: u16, value: u8) void {
         mem.memory[address] = value;
     }

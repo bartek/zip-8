@@ -14,6 +14,7 @@ const Registers = struct {
     i: u16,
 
     // Display based registers
+    //
     // FIXME: Probably make this a single V register. An array of 16 usually
     // refered to as Vx where x is a hexadecimal digit (0 through F)
     vx: u16,
@@ -158,22 +159,21 @@ pub const CPU = struct {
                 // coordinate in VX register and the Y coordinate in VY register
                 warn("Draw a sprite at (VX, Y) that is n rows tall.", .{});
 
-                // Get X and Y from appropriate registers
+                // Organize X, Y, and N
                 var vx = cpu.registers.vx;
                 var vy = cpu.registers.vy;
+                var n = opcode & 0x000F;
+
+                // Get the sprite beginning at the register I and taking into
+                // account the height (n)
+                const sprite = cpu.memory.readRange(cpu.registers.i, cpu.registers.i + n);
 
                 // Set VF to 0
                 cpu.registers.vf = 0;
 
-                // For N rows
-                var rows = opcode & 0x000F;
-
                 var j: u8 = 0;
-                while (j < rows) : (j += 1) {
-
-                    // Get one byte of sprite data from the memory address in
-                    // the I register. This is equivalent to a pixel on the screen.
-                    var row: u8 = cpu.memory.read(@intCast(u12, cpu.registers.i + j));
+                while (j < sprite.len) : (j += 1) {
+                    var row = sprite[j];
 
                     // For each of the 8 pixels/bits in this sprite row:
                     var i: u8 = 0;
@@ -182,12 +182,13 @@ pub const CPU = struct {
                         if (bit == 1) {
                             var xi = (vx + i) % screenWidth;
                             var yj = (vy + j) % screenHeight;
+
                             var old_value = cpu.display.read(xi, yj);
                             if (old_value == 1) {
                                 cpu.registers.vf = 1;
                             }
 
-                            cpu.display.write(xi, yj, @intCast(u1, old_value ^ 1));
+                            cpu.display.write(xi, yj, @intCast(u1, bit ^ old_value));
                         }
                     }
                 }

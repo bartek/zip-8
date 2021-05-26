@@ -136,9 +136,7 @@ pub fn main() !void {
         _ = sdl.SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         _ = sdl.SDL_RenderClear(renderer);
 
-        // do drawing stuff. iterate over the screens rows and columns
-        // and draw a pixel on the screen. maybe sdl is fine for this, just some
-        // overhead
+        // Draw. Iterate over each pixel on the screen and draw it if on
         var i: u16 = 0;
         while (i < SCREEN_WIDTH) : (i += 1) {
             var j: u16 = 0;
@@ -159,10 +157,6 @@ pub fn main() !void {
         }
 
         sdl.SDL_RenderPresent(renderer);
-
         sdl.SDL_Delay(17);
     }
 }
-
-// FIXME: We need to load the rom into memory
-fn loadProgram(mem: *memory.Memory) !void {}

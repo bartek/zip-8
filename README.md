@@ -1,7 +1,6 @@
 ## zip-8
 
-zip-8 is a CHIP-8 emulator written in Zig with an uninspired name. It compiles
-to WebAssembly.
+zip-8 is a CHIP-8 emulator written in Zig with an uninspired name.
 
 This project was my first time dabbling with Zig and first published emulator.
 Most of the details on implementation were informed by the links found in
@@ -21,6 +20,7 @@ discussion :)
 
 ## TODO
 
+- Load font into memory
 - Where would Union be useful? [union](https://ziglang.org/documentation/0.7.1/#union)
 
 ## References

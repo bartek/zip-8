@@ -159,7 +159,7 @@ pub const CPU = struct {
 
                 // Get the sprite beginning at the register I and taking into
                 // account the height (n)
-                const sprite = cpu.memory.readRange(cpu.i, cpu.i + n);
+                const sprite = cpu.memory.range(cpu.i, cpu.i + n);
 
                 // Set VF to 0
                 cpu.v[0xF] = 0;
@@ -194,10 +194,16 @@ pub const CPU = struct {
                 cpu.v[x] = nn;
             },
             0x7000 => {
-                warn("7XNN: Add. Add the value NN to X", .{});
+                warn("7XNN: Add. Add the value NN to X w/ overflow", .{});
                 var nn = opcode & 0x00FF;
                 var x = (opcode & 0x0F00) >> 8;
-                cpu.v[x] += nn;
+
+                // For many emulators, this would affect the carry flag. At
+                // least on this instruction, not the CHIP-8. Just do an overflow add and don't worry about the boolean result.
+                // result
+                var result: u16 = undefined;
+                _ = @addWithOverflow(u16, cpu.v[x], nn, &result);
+                cpu.v[x] = result;
             },
             0x8000 => {
                 // Instructions under 0x8000 need further decoding beyond just

@@ -197,7 +197,7 @@ pub const CPU = struct {
                 warn("7XNN: Add. Add the value NN to X", .{});
                 var nn = opcode & 0x00FF;
                 var x = (opcode & 0x0F00) >> 8;
-                cpu.v[x] = nn;
+                cpu.v[x] += nn;
             },
             0x8000 => {
                 // Instructions under 0x8000 need further decoding beyond just

@@ -17,17 +17,14 @@ const memory = @import("./memory.zig");
 const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
 
-// FIXME: This is re-declared in display.zig. Can/should that be resolved?
-const SCREEN_WIDTH = 64;
-const SCREEN_HEIGHT = 32;
 const scale = 10;
 
 fn screenWidth() u16 {
-    return SCREEN_WIDTH * scale;
+    return display.SCREEN_WIDTH * scale;
 }
 
 fn screenHeight() u16 {
-    return SCREEN_HEIGHT * scale;
+    return display.SCREEN_HEIGHT * scale;
 }
 
 // See https://github.com/zig-lang/zig/issues/565
@@ -96,11 +93,15 @@ pub fn main() !void {
         return;
     };
     defer c.deinit(allocator);
-    c.init(mem, dis);
+
+    // FIXME: Initialize the keyboard in main so it can be fed SDL events? Might
+    // be sanest way to pass this down, while also passing keyboard into the CPU
+    // for comparison sake
+    c.init(allocator, mem, dis);
 
     // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging
-    const buffer = cwd.readFileAlloc(allocator, "./roms/test_opcode.ch8", 4096) catch |err| {
+    const buffer = cwd.readFileAlloc(allocator, "./roms/INVADERS", 4096) catch |err| {
         warn("Unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
@@ -112,7 +113,6 @@ pub fn main() !void {
     // Fetch the instruction from memory at the current PC
     // Decode the instruction to find out what the emulator should do
     // Execute the instruction and do what it tells you.
-    var t: u16 = 0;
     var quit = false;
     while (!quit) {
         var event: sdl.SDL_Event = undefined;
@@ -125,12 +125,7 @@ pub fn main() !void {
             }
         }
 
-        // Fetch. Read the instruction that PC is currently pointing at from
-        // memory. An instruction is two bytes, so read two successive bytes
-        // from memory and combine them into one 16-bit instruction
-        //
-        //  Then immediately increment the PC by 2, to be ready to fetch the
-        //  next opcode.
+        // Tick the CPU
         c.tick();
 
         _ = sdl.SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
@@ -138,9 +133,9 @@ pub fn main() !void {
 
         // Draw. Iterate over each pixel on the screen and draw it if on
         var i: u16 = 0;
-        while (i < SCREEN_WIDTH) : (i += 1) {
+        while (i < display.SCREEN_WIDTH) : (i += 1) {
             var j: u16 = 0;
-            while (j < SCREEN_HEIGHT) : (j += 1) {
+            while (j < display.SCREEN_HEIGHT) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
                     const rect = &sdl.SDL_Rect{
@@ -157,6 +152,5 @@ pub fn main() !void {
         }
 
         sdl.SDL_RenderPresent(renderer);
-        sdl.SDL_Delay(17);
     }
 }

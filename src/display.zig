@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const SCREEN_WIDTH = 64;
-const SCREEN_HEIGHT = 32;
+pub const SCREEN_WIDTH = 64;
+pub const SCREEN_HEIGHT = 32;
 
 // Display defines the display for the CHIP-8.
 // The display is 64 pixels wide and 32 pixels tall. Each pixel can be on or

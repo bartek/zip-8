@@ -1,6 +1,6 @@
 ## zip-8
 
-zip-8 is a CHIP-8 emulator written in Zig. This project is currently a work in
+zip-8 is a CHIP-8 emulator written in [Zig](https://ziglang.org/). This project is currently a work in
 progress.
 
 This project is my first time dabbling with Zig and my first emulation project.

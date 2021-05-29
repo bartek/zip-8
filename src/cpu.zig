@@ -1,4 +1,5 @@
 const std = @import("std");
+const time = std.time;
 const memory = @import("./memory.zig");
 const display = @import("./display.zig");
 const keyboard = @import("./keyboard.zig");
@@ -178,8 +179,7 @@ pub const CPU = struct {
                 var x = (opcode & 0x0F00) >> 8;
                 var nn = @intCast(u8, opcode & 0x00FF);
 
-                // FIXME: Confirm this is valid
-                var rng = std.rand.DefaultPrng.init(0);
+                var rng = std.rand.DefaultPrng.init(@intCast(u64, time.milliTimestamp()));
                 const r = rng.random.intRangeLessThan(u8, 0, 255);
 
                 cpu.v[x] = r & nn;

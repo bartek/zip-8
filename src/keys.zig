@@ -8,16 +8,18 @@ const warn = std.log.warn;
 // Keyboard defines functionality to support reading input and maintaining what
 // keys are pressed in order for the CPU to provide functionality.
 pub const Keyboard = struct {
+    // keys contains the hexadecimal values of expected keys for the CHIP-8
     keys: [16]u8,
+
+    // inputs contains the inputs as provided by the system handling input
     inputs: [16]u8,
 
+    // pressed is the key that is currently pressed. Indexes with Keyboard.keys
     pressed: u8,
 
-    // the keyboard should:
-    // have a method to capture input
-    // maintain what keys are pressed
-    // be able to read those keys
-    // cpu will compare vx to what's in here
+    // init initalizes keyboard with an array of inputs. The inputs are ideally
+    // scan codes and should be providied by the system handling input (e.g. SDL)
+    // The input at inputs[I] should match the expected key at keys[I]
     pub fn init(k: *Keyboard, inputs: [16]u8) void {
         k.inputs = inputs;
 

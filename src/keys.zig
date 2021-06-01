@@ -18,7 +18,7 @@ pub const Keyboard = struct {
     pressed: u8,
 
     // init initalizes keyboard with an array of inputs. The inputs are ideally
-    // scan codes and should be providied by the system handling input (e.g. SDL)
+    // scan codes and should be provided by the system handling input (e.g. SDL)
     // The input at inputs[I] should match the expected key at keys[I]
     pub fn init(k: *Keyboard, inputs: [16]u8) void {
         k.inputs = inputs;

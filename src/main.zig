@@ -1,8 +1,5 @@
 const std = @import("std");
 
-// TODO: Ref
-// https://gigi.nullneuron.net/gigilabs/sdl2-pixel-drawing/
-
 // SDL ref:
 // https://gist.github.com/peterhellberg/421735d78a9e01fcde245dc84f6f3ecc
 const sdl = @cImport({
@@ -12,11 +9,23 @@ const sdl = @cImport({
 const fs = std.fs;
 const cwd = fs.cwd();
 const warn = std.log.warn;
+const print = std.debug.print;
 
 const memory = @import("./memory.zig");
 const display = @import("./display.zig");
 const cpu = @import("./cpu.zig");
+const keys = @import("./keys.zig");
 
+// The frequency rate (represented in Hz) that the CHIP 8 runs at.
+const FREQUENCY = 60;
+
+// Emulate a ~540 Hz CPU
+const CPUHz = FREQUENCY * 9;
+
+// Emulate ~9 cycles before drawing a frame.
+const CYCLES_PER_FRAME = (CPUHz / FREQUENCY);
+
+// Scale everything by scale
 const scale = 10;
 
 fn screenWidth() u16 {
@@ -35,23 +44,21 @@ inline fn SDL_RWclose(ctx: [*]sdl.SDL_RWops) c_int {
     return ctx[0].close.?(ctx);
 }
 
-const print = std.debug.print;
-
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    std.debug.print("Loading CHIP-8\n\n", .{});
+    print("Loading CHIP-8\n\n", .{});
 
     // SDL
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
-        sdl.SDL_Log("Unable to initialize SDL: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("unable to initialize SDL: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     }
     defer sdl.SDL_Quit();
 
     // Memory
     var mem = allocator.create(memory.Memory) catch {
-        warn("\nCould not allocate memory for Memory", .{});
+        warn("\nunable to allocate memory for Memory", .{});
         return;
     };
     defer mem.deinit(allocator);
@@ -59,50 +66,76 @@ pub fn main() !void {
 
     // Display
     var dis = allocator.create(display.Display) catch {
-        warn("\nCould not allocate memory for Display", .{});
+        warn("\nunable to allocate memory for Display", .{});
         return;
     };
     defer dis.deinit(allocator);
     dis.init();
 
+    // Keyboard
+    var keyboard = allocator.create(keys.Keyboard) catch {
+        warn("\nunable to allocate memory for Keyboard", .{});
+        return;
+    };
+    defer keyboard.deinit(allocator);
+
+    // Initialize Keyboard by mapping the desired keys to SDL Scan Code values.
+    // The input array is in order of the key map (1 .. V)
+    const inputs = [16]u8{
+        sdl.SDL_SCANCODE_1,
+        sdl.SDL_SCANCODE_2,
+        sdl.SDL_SCANCODE_3,
+        sdl.SDL_SCANCODE_4,
+        sdl.SDL_SCANCODE_Q,
+        sdl.SDL_SCANCODE_W,
+        sdl.SDL_SCANCODE_E,
+        sdl.SDL_SCANCODE_R,
+        sdl.SDL_SCANCODE_A,
+        sdl.SDL_SCANCODE_S,
+        sdl.SDL_SCANCODE_D,
+        sdl.SDL_SCANCODE_F,
+        sdl.SDL_SCANCODE_Z,
+        sdl.SDL_SCANCODE_X,
+        sdl.SDL_SCANCODE_C,
+        sdl.SDL_SCANCODE_V,
+    };
+    keyboard.init(inputs);
+
     // Create SDL window
     const screen = sdl.SDL_CreateWindow("zip-8", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screenWidth(), screenHeight(), sdl.SDL_WINDOW_OPENGL) orelse
         {
-        sdl.SDL_Log("Unable to create window: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("unable to create window: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyWindow(screen);
 
     // SDL Renderer
     const renderer = sdl.SDL_CreateRenderer(screen, -1, 0) orelse {
-        sdl.SDL_Log("Unable to create renderer: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("unable to create renderer: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyRenderer(renderer);
 
     // SDL Texture
     const texture = sdl.SDL_CreateTexture(renderer, sdl.SDL_PIXELFORMAT_ARGB8888, sdl.SDL_TEXTUREACCESS_STATIC, screenWidth(), screenHeight()) orelse {
-        sdl.SDL_Log("Unable to create texture: %s", sdl.SDL_GetError());
+        sdl.SDL_Log("unable to create texture: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyTexture(texture);
 
     // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
-        warn("\nCould not allocate memory for CPU", .{});
+        warn("\nunable to allocate memory for CPU", .{});
         return;
     };
     defer c.deinit(allocator);
 
-    // FIXME: Initialize the keyboard in main so it can be fed SDL events? Might
-    // be sanest way to pass this down, while also passing keyboard into the CPU
-    // for comparison sake
-    c.init(allocator, mem, dis);
+    c.init(allocator, mem, dis, keyboard);
 
     // Read the provided ROM
     // FIXME: Currently hardcoded path for debugging
     const buffer = cwd.readFileAlloc(allocator, "./roms/INVADERS", 4096) catch |err| {
-        warn("Unable to open file: {s}\n", .{@errorName(err)});
+        warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
 
@@ -114,6 +147,7 @@ pub fn main() !void {
     // Decode the instruction to find out what the emulator should do
     // Execute the instruction and do what it tells you.
     var quit = false;
+    var cycle: u8 = 0;
     while (!quit) {
         var event: sdl.SDL_Event = undefined;
         while (SDL_PollEvent(&event) != 0) {
@@ -125,13 +159,45 @@ pub fn main() !void {
             }
         }
 
-        // Tick the CPU
-        c.tick();
+        var state = sdl.SDL_GetKeyboardState(null);
 
+        // Timing
+        cycle += 1;
+
+        // Watch for valid keyboard input
+        for (keyboard.inputs) |input, i| {
+            // A valid input is being pressed
+            if (state[input] == 1) {
+                keyboard.set_key(@intCast(u8, i));
+            }
+
+        }
+
+        // Tick the CPU
+        if (!c.waitingForInput()) {
+            c.tick();
+        } else {
+            if (keyboard.pressed > 0) {
+                c.tick();
+            }
+        }
+
+        keyboard.pressed = undefined;
+
+        // Only draw when the right amount of cycles have passed
+        if (cycle < CYCLES_PER_FRAME) {
+            continue;
+        }
+
+        // Reset timer
+        cycle = 0;
+        c.decrement_timers();
+
+        // Draw
         _ = sdl.SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         _ = sdl.SDL_RenderClear(renderer);
 
-        // Draw. Iterate over each pixel on the screen and draw it if on
+        // Iterate over each pixel on the screen and draw it if on
         var i: u16 = 0;
         while (i < display.SCREEN_WIDTH) : (i += 1) {
             var j: u16 = 0;

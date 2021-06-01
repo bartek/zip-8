@@ -2,7 +2,7 @@ const std = @import("std");
 const time = std.time;
 const memory = @import("./memory.zig");
 const display = @import("./display.zig");
-const keyboard = @import("./keyboard.zig");
+const keys = @import("./keys.zig");
 const utils = @import("./utils.zig");
 
 const Allocator = std.mem.Allocator;
@@ -10,13 +10,16 @@ const warn = std.log.warn;
 
 // CPU is the CHIP-8's CPU
 pub const CPU = struct {
+    waitForInput: bool,
+
     allocator: *Allocator,
 
     // CHIP-8 Programs are loaded into memory starting at address 200
     pc: u16,
     memory: *memory.Memory,
     display: *display.Display,
-    keyboard: *keyboard.Keyboard,
+
+    keyboard: *keys.Keyboard,
 
     // A Stack for 16-bit addresses, which is used to call subroutines/functions
     // and return from them.
@@ -35,18 +38,13 @@ pub const CPU = struct {
     // 16 8-bit general purpose variable registers numbered 0 through F
     v: [16]u8,
 
-    pub fn init(cpu: *CPU, allocator: *Allocator, mem: *memory.Memory, dis: *display.Display) void {
+    pub fn init(cpu: *CPU, allocator: *Allocator, mem: *memory.Memory, dis: *display.Display, keyboard: *keys.Keyboard) void {
+        cpu.waitForInput = false;
+
         cpu.allocator = allocator;
         cpu.memory = mem;
         cpu.display = dis;
-
-        var kb = allocator.create(keyboard.Keyboard) catch {
-            warn("\ncould not allocate memory for Keyboard", .{});
-            return;
-        };
-        defer kb.deinit(allocator);
-        kb.init();
-        cpu.keyboard = kb;
+        cpu.keyboard = keyboard;
 
         cpu.pc = 0x0200;
         cpu.sp = 0;
@@ -67,9 +65,11 @@ pub const CPU = struct {
         var opcode = cpu.fetch();
         var instruction = cpu.execute(opcode);
 
-        // Decrement delay and sound timers.
-        // FIXME: This is likely a naive approach. These should be independent
-        // of the CPU tick but also, this may be sufficient for CHIP-8
+        return;
+    }
+
+    // decrement_timers decrements timers associated with CPU frequency
+    pub fn decrement_timers(cpu: *CPU) void {
         if (cpu.dt > 0) {
             cpu.dt -= 1;
         }
@@ -77,8 +77,6 @@ pub const CPU = struct {
         if (cpu.st > 0) {
             cpu.st -= 1;
         }
-
-        return;
     }
 
     // fetch reads the instruction the PC is currently pointing at
@@ -99,7 +97,7 @@ pub const CPU = struct {
     // This is done by first obtaining the nibble (or half-byte), which is the
     // first hexadecimal number.
     fn execute(cpu: *CPU, opcode: u16) void {
-        warn("instruction 0x{x}", .{opcode});
+        //warn("instruction 0x{x}", .{opcode});
         var nibble = opcode & 0xF000;
         switch (nibble) {
             0x0000 => {
@@ -235,13 +233,18 @@ pub const CPU = struct {
                     },
                     0x0a => {
                         // FX0A: Get key. Block until key input
-
-                        // Read a valid input key into VX
-                        cpu.v[vx] = cpu.keyboard.readInput();
-
-                        // Additional increment to PC with a valid key press
-                        cpu.pc += 2;
                         
+                        // If we were waiting, run the instruction
+                        if (cpu.waitForInput == true) {
+                            // Read a valid input key into VX
+                            cpu.v[vx] = cpu.keyboard.pressed;
+
+                            // Additional increment to PC with a valid key press
+                            cpu.pc += 2;
+                        }
+
+                        // Toggle blocking call
+                        cpu.waitForInput = !cpu.waitForInput;
                     },
                     0x15 => {
                         // Set the delay timer to VX
@@ -404,5 +407,9 @@ pub const CPU = struct {
                 utils.waitForInput();
             },
         }
+    }
+
+    pub fn waitingForInput(cpu: *CPU) bool {
+        return cpu.waitForInput;
     }
 };

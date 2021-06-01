@@ -13,6 +13,7 @@ Most of the details on implementation were informed by the links found in
 
 ## TODO
 
+- Proper cycle timing
 - Non-naive timers
 - Sound (beep above 0, might be annoying)
 - Keyboard input

@@ -62,3 +62,4 @@ pub const Keyboard = struct {
     pub fn set_key(k: *Keyboard, index: u8) void {
         k.pressed = k.keys[index];
     }
+};

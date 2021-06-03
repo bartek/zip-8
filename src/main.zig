@@ -140,32 +140,24 @@ pub fn main() !void {
     // Decode the instruction to find out what the emulator should do
     // Execute the instruction and do what it tells you.
     var quit = false;
-    var cycle: u8 = 0;
     while (!quit) {
-        // Timing
-        cycle += 1;
+        var cycle: u8 = 0;
+        while (cycle < CYCLES_PER_FRAME) : (cycle += 1) {
+            if (c.waitingForInput()) {
+                if (keyboard.pressed > 0) {
+                    c.tick() catch |err| {
+                        warn("error on instruction {x}", .{c.pc});
+                        break;
+                    };
+                }
+                continue;
+            }
 
-        // Tick the CPU
-        if (!c.waitingForInput()) {
             c.tick() catch |err| {
                 warn("error on instruction {x}", .{c.pc});
                 break;
             };
-        } else {
-            if (keyboard.pressed > 0) {
-                c.tick() catch |err| {
-                    warn("error on instruction {x}", .{c.pc});
-                    break;
-                };
-            }
         }
-        
-        // Ensure we have completed the desired cycles per frame before drawing
-        if (cycle < CYCLES_PER_FRAME) {
-            continue;
-        }
-
-        cycle = 0;
 
         // Decrement audo and delay timers
         c.decrement_timers();

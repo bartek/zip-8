@@ -22,7 +22,7 @@ const FREQUENCY = 60;
 // Emulate a ~540 Hz CPU
 const CPUHz = FREQUENCY * 9;
 
-// Emulate ~9 cycles before drawing a frame.
+// Emulate 9 cycles before drawing a frame.
 const CYCLES_PER_FRAME = (CPUHz / FREQUENCY);
 
 // Scale everything by scale
@@ -50,7 +50,7 @@ pub fn main() !void {
     print("Loading CHIP-8\n\n", .{});
 
     // SDL
-    if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
+    if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) { // FIXME: SDL_INIT_AUDIO
         sdl.SDL_Log("unable to initialize SDL: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     }
@@ -110,18 +110,14 @@ pub fn main() !void {
     defer sdl.SDL_DestroyWindow(screen);
 
     // SDL Renderer
-    const renderer = sdl.SDL_CreateRenderer(screen, -1, 0) orelse {
+    const renderer = sdl.SDL_CreateRenderer(screen, -1, sdl.SDL_RENDERER_ACCELERATED | sdl.SDL_RENDERER_PRESENTVSYNC) orelse {
         sdl.SDL_Log("unable to create renderer: %s", sdl.SDL_GetError());
         return error.SDLInitializationFailed;
     };
     defer sdl.SDL_DestroyRenderer(renderer);
 
-    // SDL Texture
-    const texture = sdl.SDL_CreateTexture(renderer, sdl.SDL_PIXELFORMAT_ARGB8888, sdl.SDL_TEXTUREACCESS_STATIC, screenWidth(), screenHeight()) orelse {
-        sdl.SDL_Log("unable to create texture: %s", sdl.SDL_GetError());
-        return error.SDLInitializationFailed;
-    };
-    defer sdl.SDL_DestroyTexture(texture);
+    // Scale rendering
+    _ = sdl.SDL_RenderSetScale(renderer, scale, scale);
 
     // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
@@ -149,6 +145,31 @@ pub fn main() !void {
     var quit = false;
     var cycle: u8 = 0;
     while (!quit) {
+        // Timing
+        cycle += 1;
+
+        // Tick the CPU
+        if (!c.waitingForInput()) {
+            c.tick();
+        } else {
+            if (keyboard.pressed > 0) {
+                c.tick();
+            }
+        }
+        
+        // Ensure we have completed the desired cycles per frame before drawing
+        if (cycle < CYCLES_PER_FRAME) {
+            continue;
+        }
+
+        cycle = 0;
+
+        // Decrement audo and delay timers
+        c.decrement_timers();
+
+        // Reset keyboard on each view/input tick
+        keyboard.pressed = undefined;
+
         var event: sdl.SDL_Event = undefined;
         while (SDL_PollEvent(&event) != 0) {
             switch (event.@"type") {
@@ -161,9 +182,6 @@ pub fn main() !void {
 
         var state = sdl.SDL_GetKeyboardState(null);
 
-        // Timing
-        cycle += 1;
-
         // Watch for valid keyboard input
         for (keyboard.inputs) |input, i| {
             // A valid input is being pressed
@@ -173,29 +191,10 @@ pub fn main() !void {
 
         }
 
-        // Tick the CPU
-        if (!c.waitingForInput()) {
-            c.tick();
-        } else {
-            if (keyboard.pressed > 0) {
-                c.tick();
-            }
-        }
-
-        keyboard.pressed = undefined;
-
-        // Only draw when the right amount of cycles have passed
-        if (cycle < CYCLES_PER_FRAME) {
-            continue;
-        }
-
-        // Reset timer
-        cycle = 0;
-        c.decrement_timers();
-
         // Draw
         _ = sdl.SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
         _ = sdl.SDL_RenderClear(renderer);
+        _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 200, 255);
 
         // Iterate over each pixel on the screen and draw it if on
         var i: u16 = 0;
@@ -204,15 +203,7 @@ pub fn main() !void {
             while (j < display.SCREEN_HEIGHT) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
-                    const rect = &sdl.SDL_Rect{
-                        .x = i * scale,
-                        .y = j * scale,
-                        .w = scale,
-                        .h = scale,
-                    };
-
-                    _ = sdl.SDL_SetRenderDrawColor(renderer, 255, 255, 200, 255);
-                    _ = sdl.SDL_RenderFillRect(renderer, rect);
+                    _ = sdl.SDL_RenderDrawPoint(renderer, i, j);
                 }
             }
         }

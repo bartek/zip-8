@@ -69,6 +69,8 @@ pub const CPU = struct {
     }
 
     // decrement_timers decrements timers associated with CPU frequency
+    // These timers are independent from CPU operations and should be
+    // decremented at the rate of drawing
     pub fn decrement_timers(cpu: *CPU) void {
         if (cpu.dt > 0) {
             cpu.dt -= 1;

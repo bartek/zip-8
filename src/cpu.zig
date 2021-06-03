@@ -61,11 +61,11 @@ pub const CPU = struct {
     }
 
     // tick ticks the CPU
-    pub fn tick(cpu: *CPU) void {
-        var opcode = cpu.fetch();
-        var instruction = cpu.execute(opcode);
-
-        return;
+    pub fn tick(cpu: *CPU) !void {
+        var opcode = cpu.fetch() catch |err| {
+            return err;
+        };
+        try cpu.execute(opcode);
     }
 
     // decrement_timers decrements timers associated with CPU frequency
@@ -86,9 +86,9 @@ pub const CPU = struct {
     // and then combined
     // The first byte is bit-shifted to the left and then ORed with the second
     // byte. The end result is a 16 bit opcode
-    fn fetch(cpu: *CPU) u16 {
-        var high: u16 = cpu.memory.read(cpu.pc);
-        var low: u16 = cpu.memory.read(cpu.pc + 1);
+    fn fetch(cpu: *CPU) !u16 {
+        var high: u16 = try cpu.memory.read(cpu.pc);
+        var low: u16 = try cpu.memory.read(cpu.pc + 1);
 
         cpu.pc += 2;
 
@@ -98,7 +98,7 @@ pub const CPU = struct {
     // execute decodes the opcode to identify the instruction.
     // This is done by first obtaining the nibble (or half-byte), which is the
     // first hexadecimal number.
-    fn execute(cpu: *CPU, opcode: u16) void {
+    fn execute(cpu: *CPU, opcode: u16) !void {
         //warn("instruction 0x{x}", .{opcode});
         var nibble = opcode & 0xF000;
         switch (nibble) {
@@ -266,20 +266,35 @@ pub const CPU = struct {
                         cpu.i = cpu.v[vx] * 5;
                     },
                     0x33 => {
-                        cpu.memory.write(cpu.i, @intCast(u8, cpu.v[vx] / 100));
-                        cpu.memory.write(cpu.i + 1, @intCast(u8, (cpu.v[vx] / 10) % 10));
-                        cpu.memory.write(cpu.i + 2, @intCast(u8, (cpu.v[vx] % 100) % 10));
+                        // FX33
+                        // Takes the number in VX and converts it into three
+                        // decimal digits, storing these digits in memory at the address
+                        // in the index register I.
+                        //
+                        // For example, if VX contains 156 (or 9C in hex), it would put
+                        // the number 1 at the address `I`, 5 in address `I + 1` and 6
+                        // in address `I + 2`
+                        cpu.memory.write(cpu.i, cpu.v[vx] / 100);
+                        cpu.memory.write(cpu.i + 1, (cpu.v[vx] / 10) % 10);
+                        cpu.memory.write(cpu.i + 2, (cpu.v[vx] % 100) % 10);
                     },
                     0x55 => {
+                        // FX55
+                        // The value of each variable register from V0 to VX
+                        // inclusive will be stored in successive memory addresses.
                         var j: u8 = 0;
-                        while (j < vx) : (j += 1) {
+                        while (j <= vx) : (j += 1) {
                             cpu.memory.write(cpu.i + j, cpu.v[j]);
                         }
                     },
                     0x65 => {
+                        // FX65
+                        // Like FX55, except that it takes the value stored at
+                        // the memory addresses and loads them into the variable
+                        // registers instead
                         var j: u16 = 0;
-                        while (j < vx) : (j += 1) {
-                            cpu.v[vx] = cpu.memory.read(cpu.i + j);
+                        while (j <= vx) : (j += 1) {
+                            cpu.v[vx] = try cpu.memory.read(cpu.i + j);
                         }
                     },
                     else => {
@@ -367,7 +382,7 @@ pub const CPU = struct {
                         cpu.v[vx] = result;
                     },
                     0x0005 => {
-                        // 8XY5: Set VX to the value of VX minus VY
+                        // 8XY5: Set VX to the value of VX minus VY with carry flag 
 
                         var result: u8 = undefined;
                         _ = @subWithOverflow(u8, cpu.v[vx], cpu.v[vy], &result);
@@ -384,6 +399,18 @@ pub const CPU = struct {
                         // 8XY6: Set VX to the value of VY then shift VX 1 bit to the right
                         cpu.v[0xF] = cpu.v[vx] & 0x1;
                         cpu.v[vx] >>= 1;
+                    },
+                    0x0007 => {
+                        // 8XY7: Set VX to the value of VY - VX with carry flag
+                        var result: u8 = undefined;
+
+                        if (@subWithOverflow(u8, cpu.v[vy], cpu.v[vx], &result)) {
+                            cpu.v[0xF] = 0;
+                        } else {
+                            cpu.v[0xF] = 1;
+                        }
+
+                        cpu.v[vx] = result;
                     },
                     0xe => {
                         // 8XYE: Set VX to the value of VY then shift VX 1 bit to the left

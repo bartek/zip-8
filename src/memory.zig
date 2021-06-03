@@ -1,6 +1,9 @@
 const std = @import("std");
 
-const MemoryError = error{ProgramTooLarge};
+const MemoryError = error{
+    ProgramTooLarge,
+    OutOfBounds,
+};
 
 //  CHIP-8  may refer to a group of sprites representing the hexadecimal digits 0 through F. 
 //  These sprites are 5 bytes long, or 8x5 pixels. The data should be stored in
@@ -44,7 +47,10 @@ pub const Memory = struct {
         alloc.destroy(mem);
     }
 
-    pub fn read(mem: *Memory, address: u16) u8 {
+    pub fn read(mem: *Memory, address: u16) !u8 {
+        if (address > 4096 - 1) {
+            return MemoryError.OutOfBounds;
+        }
         return mem.memory[address];
     }
 

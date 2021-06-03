@@ -116,9 +116,6 @@ pub fn main() !void {
     };
     defer sdl.SDL_DestroyRenderer(renderer);
 
-    // Scale rendering
-    _ = sdl.SDL_RenderSetScale(renderer, scale, scale);
-
     // CPU is aware of most modules as it interacts with them.
     var c = allocator.create(cpu.CPU) catch {
         warn("\nunable to allocate memory for CPU", .{});
@@ -150,10 +147,16 @@ pub fn main() !void {
 
         // Tick the CPU
         if (!c.waitingForInput()) {
-            c.tick();
+            c.tick() catch |err| {
+                warn("error on instruction {x}", .{c.pc});
+                break;
+            };
         } else {
             if (keyboard.pressed > 0) {
-                c.tick();
+                c.tick() catch |err| {
+                    warn("error on instruction {x}", .{c.pc});
+                    break;
+                };
             }
         }
         
@@ -203,7 +206,14 @@ pub fn main() !void {
             while (j < display.SCREEN_HEIGHT) : (j += 1) {
                 var pixel = dis.read(i, j);
                 if (pixel == 1) {
-                    _ = sdl.SDL_RenderDrawPoint(renderer, i, j);
+                    const rect = &sdl.SDL_Rect{
+                        .x = i * scale,
+                        .y = j * scale,
+                        .w = scale,
+                        .h = scale,
+                    };
+
+                    _ = sdl.SDL_RenderFillRect(renderer, rect);
                 }
             }
         }

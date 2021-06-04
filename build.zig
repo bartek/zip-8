@@ -11,19 +11,21 @@ pub fn build(b: *Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const exe = b.addExecutable("chip-8", "src/main.zig");
+    const exe = b.addExecutable("zip8", "src/main.zig");
     exe.setTarget(target);
+
+    exe.addIncludeDir("/usr/local/include");
+
     exe.setBuildMode(mode);
     exe.linkSystemLibrary("SDL2");
     exe.linkSystemLibrary("c");
     exe.install();
 
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
 
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+    b.default_step.dependOn(&exe.step);
+    b.installArtifact(exe);
+
+    const run = b.step("run", "Run the app");
+    const run_cmd = exe.run();
+    run.dependOn(&run_cmd.step);
 }
